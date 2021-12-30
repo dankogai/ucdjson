@@ -17,12 +17,12 @@ if ( !-f "$fn.xml" ) {
 }
 
 warn "reading $fn.xml...\n";
-my $obj = XMLin("$fn.xml") or die $!;
+my $ucd = XMLin("$fn.xml") or die $!;
 my $jx  = JSON::XS->new->canonical(1);
 
 {
     my @aref;
-    my $aref = $obj->{repertoire}{char};
+    my $aref = $ucd->{repertoire}{char};
     warn 0 + @$aref, " char found.\n";
     for (@$aref) {
         my ( $dir, $path );
@@ -41,32 +41,11 @@ my $jx  = JSON::XS->new->canonical(1);
         open my $wh, '>:utf8', $path or die "$path:$!";
         print $wh $jx->encode($_);
     }
-    $obj->{repertoire}{char} = \@aref;
+    $ucd->{repertoire}{char} = \@aref;
 }
-
-for my $kind (qw/char noncharacter reserved surrogate/) {
-    my $ref  = $obj->{repertoire}{$kind};
-    my $dir  = "ucd/repertoire";
-    my $path = "$dir/$kind.json";
-    if ( !-d $dir ) {
-        make_path($dir);
-        warn $dir;
-    }
+{
+    my $path = 'ucd.json';
     open my $wh, '>:utf8', $path or die "$path:$!";
     warn $path;
-    print $wh $jx->encode($ref);
-}
-
-for my $kind ( keys %{$obj} ) {
-    next if $kind eq 'repertoire';
-    my $ref  = $obj->{$kind};
-    my $dir  = "ucd";
-    my $path = "$dir/$kind.json";
-    if ( !-d $dir ) {
-        make_path($dir);
-        warn $dir;
-    }
-    open my $wh, '>:utf8', $path or die "$path:$!";
-    warn $path;
-    print $wh $jx->encode($ref);
+    print $wh $jx->encode($ucd);
 }
