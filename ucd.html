@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+</head>
+<body>
+  <script type="module">
+    import {UCD} from "./ucd.js";
+    // window.UCD = await UCD('./ucd');
+    window.UCD = new UCD('https://api.dan.co.jp/ucd');
+  </script>
+</body>
+
+</html>
