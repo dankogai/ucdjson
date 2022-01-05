@@ -3,22 +3,28 @@
 use strict;
 use warnings;
 use XML::Simple;
-use JSON::XS;
+use JSON;
 use File::Path qw(make_path);
 
-my $fn  = 'ucd.all.flat';
-my $url = "https://www.unicode.org/Public/UCD/latest/ucdxml/$fn.zip";
+my $version = shift or die "usage: $0 version";
+my $flat = 'ucd.all.flat';
+my $xmlfn = "$version.xml";
+my $url = "https://www.unicode.org/Public/$version/ucdxml/$flat.zip";
 
-if ( !-f "$fn.xml" ) {
+
+if ( !-f $xmlfn ) {
     my $err;
     $err = system qw/curl -fOR/, $url;
     die "download failed" if $err;
-    $err = system qw/unzip/, "$fn.zip";
+    $err = system qw/unzip/, "$flat.zip";
+    die "unzip failed" if $err;
+    unlink "$flat.zip";
+    rename "$flat.xml", $xmlfn or die !$;
 }
 
-warn "reading $fn.xml...\n";
-my $ucd = XMLin("$fn.xml") or die $!;
-my $jx  = JSON::XS->new->canonical(1);
+warn "reading $xmlfn...\n";
+my $ucd = XMLin($xmlfn) or die $!;
+my $jx  = JSON->new->canonical(1);
 
 {
     my @aref;
@@ -32,7 +38,7 @@ my $jx  = JSON::XS->new->canonical(1);
         }
         my $cp = sprintf "%06X", hex $_->{cp};
         $cp =~ /\A(..)(..)(..)/;
-        $dir  = "ucd/repertoire/char/$1/$2";
+        $dir  = "ucd/$version/$1/$2";
         $path = "$dir/$3.json";
         if ( !-d $dir ) {
             make_path($dir);
@@ -44,8 +50,15 @@ my $jx  = JSON::XS->new->canonical(1);
     $ucd->{repertoire}{char} = \@aref;
 }
 {
-    my $path = 'ucd.json';
-    open my $wh, '>:utf8', $path or die "$path:$!";
-    warn $path;
-    print $wh $jx->encode($ucd);
+    for my $k (keys %$ucd) {
+        my $dir = "ucd/$version";
+        my $path = "$dir/$k.json";
+        if ( !-d $dir ) {
+            make_path($dir);
+            warn $dir;
+        }
+        open my $wh, '>:utf8', $path or die "$path:$!";
+        warn $path;
+        print $wh $jx->encode($ucd->{$k});
+    }
 }
